@@ -1,9 +1,17 @@
-#################################################
+########################################################################
 #
-#	pithread.a makefile header
-#		complete later
+#	INF01142 - Operating Systems
+#		Assignment 1 - Threads
 #
-#################################################
+#	PICCOLO THREADS (pithread)
+#
+#	João Lauro Garibaldi Jr		1xxxxx
+#	Khin Baptista				217443
+#
+#	This makefile creates libpithread.a inside the lib subdirectory
+#		The library implements a thread management system at user level
+#
+########################################################################
 
 LIB = libpithread.a
 
@@ -29,9 +37,9 @@ OBJECTS = $(patsubst %, $(BIN_DIR)/%, $(OBJ))
 
 #################################################
 
-all: $(LIB)
+all: $(LIB_DIR)/$(LIB)
 
-$(LIB): $(OBJECTS)
+$(LIB_DIR)/$(LIB): $(OBJECTS)
 	ar crs $@ $^
 	
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c

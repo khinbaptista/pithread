@@ -1,6 +1,6 @@
 #
 # Makefile para programas exemplo
-# 
+#
 
 CC=gcc
 LIB_DIR=../lib
@@ -21,7 +21,3 @@ mandel: mandel.c $(LIB_DIR)/libpithread.a
 
 clean:
 	rm -rf exemplo mandel teste_vetor teste_prio *~
-
-
-
-
