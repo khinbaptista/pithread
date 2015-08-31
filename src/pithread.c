@@ -1,3 +1,4 @@
+#include <ucontext.h>
 #include "pidata.h"
 #include "pithread.h"
 #include "pithread_queue.h"
@@ -43,30 +44,39 @@ void Initialize(){
 
 int picreate(int cred, void* (*entry)(void*), void *arg){
 	Initialize();
+	char newStack[SIGSTKSZ];
+	ucontext_t newContext;
+
 	
-	if (executeThread == 1) {
-		executeThread = 0;
-		setcontext(&runningThread->context);
+	if(TCB_t* thread = (TCB_t*)malloc(sizeof(TCB_t))){
+		thread->tid = counter++;
+		thread->state = ABLE;	// precisa ter um state "CREATION"?
+		thread->credCreate = cred;
+		thread->credReal = cred;
+		
+		getcontext(&newContext);
+		newContext.uc_link = NULL;
+		newcontext.uc_stack.ss_sp = newStack;
+		newContext.uc_stack.ss_size = sizeof(newStack);
+
+		//CORRIGIR ESSE MAKECONTEXT
+		makecontext(&newContext, (void (*)(void)) entry, 2, arg); 
+    	
+		thread->context = newContext;
+		
+		AddThread(activeThreads, thread);
+	
+		return 0;
+
+	}else{
+		return -1;	
 	}
-	
-	TCB_t* thread = (TCB_t*)malloc(sizeof(TCB_t));
-	thread->tid = counter++;
-	thread->state = ABLE;	// precisa ter um state "CREATION"?
-	thread->credCreate = cred;
-	thread->credReal = cred;
-	AddThread(activeThreads, thread);
-	
-	getcontext(&thread->context);
-	
-	if (executeThread == 1){
-		executeThread = 0;
-		entry(arg);
-	}
-	
-	return 1;
+
 }
 
 int piyield(){
+	TCB_t* oldThread;
+
 	if (!CheckInit()) return 0;
 	
 	DecreaseCredits(runningThread);
@@ -77,22 +87,18 @@ int piyield(){
 		AddThread(activeThreads, runningThread);
 	
 	runningThread->state = ABLE;
-	
+	oldThread = runningThread;
 	runningThread = NextThread(activeThreads);
 	
 	if (runningThread == NULL){
 		SwapQueues(activeThreads, expiredThreads);
 		runningThread = NextThread(activeThreads);
-		
-		// No more threads to run, exit process
-		if (runningThread == NULL)
-			exit(0);
+	}
+	else{
+		runningThread->state = EXECUTION;
 	}
 	
-	if (runningThread)
-		runningThread->state = EXECUTION;
-		
-	return 1;
+	return swapcontext(oldThread->context, runningThread->context);
 }
 
 
