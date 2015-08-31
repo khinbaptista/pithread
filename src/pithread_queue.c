@@ -19,11 +19,56 @@ void AddThread(TCB_t* queue, TCB_t* thread){
 		return;
 	}
 	
+	/* New thread has the most credits */
+	if (thread->credReal > queue->credReal){
+		thread->next = queue;
+		queue->prev = thread;
+		thread->prev = NULL;
+		
+		queue = thread;
+		
+		return;
+	}
 	
+	
+	/* Insert new thread in position */
+	
+	// iterator
+	TCB_t* it = queue->next;
+	
+	do{		// position found
+		if (thread->credReal > it->credReal){
+			thread->next = it;
+			thread->prev = it->prev;
+			it->prev = thread;
+			thread->prev->next = thread;
+			
+			it = NULL;
+		}	// end of queue
+		else if (it->next == NULL){
+			it->next = thread;
+			thread->prev = it;
+			thread->next = NULL;
+			
+			it = NULL;
+		}
+		else	// keep looking
+			it = it->next;
+	}
+	while (it != NULL);
 }
 
 void SwapQueues(TCB_t* a, TCB_t* b){
 	TCB_t* c = a;
 	a = b;
 	b = c;
+}
+
+TCB_t* GetThread(TCB_t* queue, int tid){
+	TCB_t* it = queue;
+	
+	while (it != NULL && it->tid != tid)
+		it = it->next;
+		
+	return it;
 }
