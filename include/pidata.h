@@ -1,5 +1,5 @@
 /*
- * pidata.h: arquivo de inclus�o de uso apenas na geração da libpithread
+ * pidata.h: arquivo de inclusão de uso apenas na geração da libpithread
  *
  * Esse arquivo pode ser modificado. ENTRETANTO, deve ser utilizada a TCB fornecida.
  *
@@ -7,6 +7,12 @@
 
 #ifndef __pidata__
 #define __pidata__
+
+#define CREATION 0
+#define ABLE 1
+#define EXECUTION 2
+#define BLOCKED 3
+#define FINISHED 4
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct TCB {
