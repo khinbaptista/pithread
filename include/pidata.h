@@ -8,14 +8,19 @@
 #ifndef __pidata__
 #define __pidata__
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <ucontext.h>
 
+// Thread state codes
 #define CREATION 0
 #define ABLE 1
 #define EXECUTION 2
 #define BLOCKED 3
 #define FINISHED 4
+
+// Cost for a thread to execute
+#define EXECUTION_COST 10
 
 /* NÃO ALTERAR ESSA struct */
 typedef struct TCB {

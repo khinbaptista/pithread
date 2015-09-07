@@ -22,7 +22,7 @@ void AddThread(TCB_t* queue, TCB_t* thread){
 	
 }
 
-void SwapQueues(TCB_t* a, TCB_t b){
+void SwapQueues(TCB_t* a, TCB_t* b){
 	TCB_t* c = a;
 	a = b;
 	b = c;

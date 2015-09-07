@@ -19,7 +19,7 @@ LIB = libpithread.a
 
 CC = gcc
 
-CFLAGS = -Wall -std=c99
+CFLAGS = -Wall
 
 #################################################
 
