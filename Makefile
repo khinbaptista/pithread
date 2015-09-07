@@ -19,7 +19,7 @@ LIB = libpithread.a
 
 CC = gcc
 
-CFLAGS = -Wall
+CFLAGS = -Wall -std=c99
 
 #################################################
 
@@ -30,7 +30,7 @@ SRC_DIR = ./src
 
 #################################################
 
-SRC =
+SRC = pithread.c pithread_queue.c
 
 OBJ = $(SRC:.c=.o)
 OBJECTS = $(patsubst %, $(BIN_DIR)/%, $(OBJ))

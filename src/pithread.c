@@ -1,6 +1,5 @@
 #include "pidata.h"
 #include "pithread.h"
-#include "pithread_op.h"
 #include "pithread_queue.h"
 
 TCB_t* activeThreads;
@@ -17,7 +16,7 @@ void DecreaseCredits(TCB_t* t);
 
 // Implementations
 
-void piyield(){
+int piyield(){
 	DecreaseCredits(runningThread);
 	
 	if (runningThread->credReal == 0)
@@ -40,6 +39,8 @@ void piyield(){
 	
 	if (runningThread)
 		runningThread->state = EXECUTION;
+		
+	return 1;
 }
 
 

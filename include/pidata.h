@@ -8,6 +8,9 @@
 #ifndef __pidata__
 #define __pidata__
 
+#include <stdlib.h>
+#include <ucontext.h>
+
 #define CREATION 0
 #define ABLE 1
 #define EXECUTION 2
