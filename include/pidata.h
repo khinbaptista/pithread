@@ -1,7 +1,8 @@
 /*
  * pidata.h: arquivo de inclusão de uso apenas na geração da libpithread
  *
- * Esse arquivo pode ser modificado. ENTRETANTO, deve ser utilizada a TCB fornecida.
+ * Esse arquivo pode ser modificado.
+ * ENTRETANTO, deve ser utilizada a TCB fornecida.
  *
  */
 

@@ -11,6 +11,8 @@ TCB_t* runningThread;
 int counter;
 int initialized;
 
+int executeThread;
+
 // Helper functions signatures
 
 void Initialize(void);
@@ -25,13 +27,41 @@ void Initialize(){
 	
 	initialized = 1;
 	counter = 0;
+	
+	executeThread = 0;
+	
+	TCB_t* mainThread = (TCB_t*)malloc(sizeof(TCB_t));
+	
+	mainThread->tid = counter++;
+	mainThread->state = EXECUTION;
+	mainThread->credCreate = 0;
+	mainThread->credReal = 0;
+	getcontext(&mainThread->context);
+	
+	runningThread = mainThread;
 }
 
 int picreate(int cred, void* (*entry)(void*), void *arg){
 	Initialize();
 	
-	//TCB_t* thread = (TCB_t*)malloc(sizeof(TCB_t));
-	//thread->
+	if (executeThread == 1) {
+		executeThread = 0;
+		setcontext(&runningThread->context);
+	}
+	
+	TCB_t* thread = (TCB_t*)malloc(sizeof(TCB_t));
+	thread->tid = counter++;
+	thread->state = ABLE;	// precisa ter um state "CREATION"?
+	thread->credCreate = cred;
+	thread->credReal = cred;
+	AddThread(activeThreads, thread);
+	
+	getcontext(&thread->context);
+	
+	if (executeThread == 1){
+		executeThread = 0;
+		entry(arg);
+	}
 	
 	return 1;
 }
