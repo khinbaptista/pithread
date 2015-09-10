@@ -63,3 +63,12 @@ void SwapQueues(TCB_t* a, TCB_t* b){
 	a = b;
 	b = c;
 }
+
+TCB_t* GetThread(TCB_t* queue, int tid){
+	TCB_t* it = queue;
+	
+	while (it != NULL && it->tid != tid)
+		it = it->next;
+		
+	return it;
+}
