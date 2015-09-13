@@ -1,7 +1,7 @@
 #include <ucontext.h>
-#include "pidata.h"
-#include "pithread.h"
-#include "pithread_queue.h"
+#include "../include/pidata.h"
+#include "../include/pithread.h"
+#include "../include/pithread_queue.h"
 
 TCB_t* activeThreads;
 TCB_t* expiredThreads;
@@ -15,7 +15,7 @@ TCB_t* waitedThreads;
 TCB_t* runningThread;
 
 
-u_context finishCtx;
+ucontext_t finishCtx;
 
 
 int counter;
@@ -36,7 +36,7 @@ void unblock(int tid);
 void Initialize(){
 	if (initialized == 1) return;
 
-	u_context mainCtx;
+	ucontext_t mainCtx;
 	char mainStack[SIGSTKSZ];
 	char finishStack[SIGSTKSZ];
 	
@@ -50,7 +50,7 @@ void Initialize(){
 	finishCtx.uc_stack.ss_sp = finishStack;
 	finishCtx.uc_stack.ss_size = sizeof(finishStack);
 
-	makecontext(&finishCtx, (void (*)(void)) finishThread, 0, void);
+	makecontext(&finishCtx, (void (*)(void)) finishThread, 0, NULL);
 
 
 	//MAIN THREAD CREATION
@@ -76,9 +76,9 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 	Initialize();
 	char newStack[SIGSTKSZ];
 	ucontext_t newContext;
+	TCB_t* thread;
 
-
-	if(TCB_t* thread = (TCB_t*)malloc(sizeof(TCB_t))){
+	if( ( thread = (TCB_t*)malloc(sizeof(TCB_t)) ) ){
 		// NEW THREAD CREATION
 		thread->tid = counter++;
 		thread->state = ABLE;	// precisa ter um state "CREATION"?
@@ -86,9 +86,9 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 		thread->credReal = cred;
 
 		getcontext(&newContext);
-		newContext.uc_link = finishCtx;
+		newContext.uc_link = &finishCtx;
 
-		newcontext.uc_stack.ss_sp = newStack;
+		newContext.uc_stack.ss_sp = newStack;
 		newContext.uc_stack.ss_size = sizeof(newStack);
 
 		
@@ -137,7 +137,7 @@ int piwait(int tid){
 			//SCHEDULER CONTEXT CREATION
 			getcontext(&schedulerContext);
 			schedulerContext.uc_link = NULL;
-			schedulercontext.uc_stack.ss_sp = schedulerStack;
+			schedulerContext.uc_stack.ss_sp = schedulerStack;
 			schedulerContext.uc_stack.ss_size = sizeof(schedulerStack);
 
 			makecontext(&schedulerContext, (void (*)(void)) schedule, 0, NULL);
@@ -151,9 +151,9 @@ int piwait(int tid){
 			makecontext(&unblockContext, (void (*)(void)) schedule, 1, runningThread->tid);
 			
 
-			waitedThread->context.uc_link = unblockContext;
+			waitedThread->context.uc_link = &unblockContext;
 
-			swapcontext(runningThread->context, &schedulerContext);
+			swapcontext(&runningThread->context, &schedulerContext);
 
 			return 0;
 		}
@@ -162,16 +162,8 @@ int piwait(int tid){
 	return -1;
 
 }
-	
-TCB_t* GetThread(TCB_t* queue, int tid){
-	TCB_t* it = queue;
-	
-	while (it != NULL && it->tid != tid)
-		it = it->next;
-		
-	return it;
-}
-}
+
+
 
 
 int piyield(){
@@ -205,7 +197,7 @@ int piyield(){
 	
 	schedule();
 
-	return swapcontext(oldThread->context, runningThread->context);
+	return swapcontext(&oldThread->context, &runningThread->context);
 }
 
 
@@ -229,7 +221,7 @@ void DecreaseCredits(TCB_t* t){
 void finishThread(){
 	runningThread->state = FINISHED;
 	schedule();
-	setcontext(runningThread->context);
+	setcontext(&runningThread->context);
 }
 
 // SELECTS NEXT RUNNING THREAD
