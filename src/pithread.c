@@ -5,15 +5,21 @@
 
 TCB_t* activeThreads;
 TCB_t* expiredThreads;
-TCB_t* blockedThreads;
+
+TCB_t* blockedActiveThreads;
+TCB_t* blockedExpiredThreads;
+TCB_t* mtxBlockedThreads;
+
+TCB_t* waitedThreads;
 
 TCB_t* runningThread;
+
+
 u_context finishCtx;
+
 
 int counter;
 int initialized;
-
-int executeThread;
 
 // Helper functions signatures
 
@@ -22,6 +28,7 @@ int inline CheckInit();
 void DecreaseCredits(TCB_t* t);
 void schedule();
 void finishThread();
+void unblock(int tid);
 
 
 // Implementations
@@ -36,8 +43,6 @@ void Initialize(){
 
 	initialized = 1;
 	counter = 0;
-
-	executeThread = 0;
 
 	//FINISH THREAD CONTEXT CREATION
 	getcontext(&finishCtx);
@@ -82,7 +87,7 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 
 		getcontext(&newContext);
 		newContext.uc_link = finishCtx;
-;
+
 		newcontext.uc_stack.ss_sp = newStack;
 		newContext.uc_stack.ss_size = sizeof(newStack);
 
@@ -101,8 +106,76 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 	return -1;
 }
 
+int piwait(int tid){
+	TCB_t* waitedThread;
+	
+	char schedulerStack[SIGSTKSZ];
+	ucontext_t schedulerContext;
+	
+	char unblockStack[SIGSTKSZ];
+	ucontext_t unblockContext;
+
+
+	waitedThread = GetThread(activeThreads, tid);
+	if(!waitedThread){
+		waitedThread = GetThread(expiredThreads, tid);
+		if(!waitedThread){
+			waitedThread = GetThread(blockedActiveThreads, tid);
+			if(!waitedThread){
+				waitedThread = GetThread(blockedExpiredThreads, tid);			
+				if(!waitedThread){
+					waitedThread = GetThread(mtxBlockedThreads, tid);			
+				}
+			}
+		}	
+	}
+	
+	if(waitedThread){
+		if(!GetThread(waitedThreads, tid)){
+			runningThread->state = BLOCKED;
+			
+			//SCHEDULER CONTEXT CREATION
+			getcontext(&schedulerContext);
+			schedulerContext.uc_link = NULL;
+			schedulercontext.uc_stack.ss_sp = schedulerStack;
+			schedulerContext.uc_stack.ss_size = sizeof(schedulerStack);
+
+			makecontext(&schedulerContext, (void (*)(void)) schedule, 0, NULL);
+			
+			//UNBLOCK CONTEXT CREATION
+			getcontext(&unblockContext);
+			unblockContext.uc_link = NULL;
+			unblockContext.uc_stack.ss_sp = unblockStack;
+			unblockContext.uc_stack.ss_size = sizeof(unblockStack);
+
+			makecontext(&unblockContext, (void (*)(void)) schedule, 1, runningThread->tid);
+			
+
+			waitedThread->context.uc_link = unblockContext;
+
+			swapcontext(runningThread->context, &schedulerContext);
+
+			return 0;
+		}
+	}
+
+	return -1;
+
+}
+	
+TCB_t* GetThread(TCB_t* queue, int tid){
+	TCB_t* it = queue;
+	
+	while (it != NULL && it->tid != tid)
+		it = it->next;
+		
+	return it;
+}
+}
+
+
 int piyield(){
-	//TCB_t* oldThread;
+	TCB_t* oldThread;
 
 	if (!CheckInit()) return -1;
 
@@ -127,7 +200,9 @@ int piyield(){
 	else{
 		runningThread->state = EXECUTION;
 	}*/
-
+	runningThread->state = ABLE;
+	oldThread = runningThread;
+	
 	schedule();
 
 	return swapcontext(oldThread->context, runningThread->context);
@@ -159,7 +234,6 @@ void finishThread(){
 
 // SELECTS NEXT RUNNING THREAD
 void schedule(){
-	TCB_t* oldThread;
 
 	// IF RUNNING THREAD IS NOT FINISHED
 	// PUTS THE THREAD IN ONE OF THE TWO
@@ -167,13 +241,24 @@ void schedule(){
 	if(runningThread->state != FINISHED){
 		DecreaseCredits(runningThread);
 
-		if (runningThread->credReal == 0)
-			AddThread(expiredThreads, runningThread);
-		else
-			AddThread(activeThreads, runningThread);
+		if (runningThread->credReal == 0){
+			if(runningThread->state == ABLE){	
+				AddThread(expiredThreads, runningThread);
+			}
+			if(runningThread->state == BLOCKED){	
+				AddThread(blockedExpiredThreads, runningThread);
+			}
+		}
+		else{
+			if(runningThread->state == ABLE){
+				AddThread(blockedActiveThreads, runningThread);
+			}
+			if(runningThread->state == BLOCKED){
+				AddThread(blockedExpiredThreads, runningThread);
+			}
+		}		
+
 		
-		runningThread->state = ABLE;
-		oldThread = runningThread;
 
 	}
 	// IF THE THREAD IS FINISHED, 
@@ -193,4 +278,22 @@ void schedule(){
 
 	runningThread->state = EXECUTION;
 	
+}
+
+void unblock(int tid){
+	TCB_t* blockedThread;
+
+	blockedThread = GetThread(blockedActiveThreads, tid);
+
+	if(!blockedThread){
+		blockedThread = GetThread(blockedExpiredThreads, tid);
+		blockedThread->state = ABLE;
+		AddThread(expiredThreads, blockedThread);
+	}else{
+		blockedThread->state = ABLE;
+		AddThread(activeThreads, blockedThread);		
+	}
+	
+	finishThread();
+
 }
