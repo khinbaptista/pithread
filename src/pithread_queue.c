@@ -34,7 +34,7 @@ void AddThread(TCB_t* queue, TCB_t* thread){
 	/* Insert new thread in position */
 	
 	// iterator
-	TCB_t* it = queue->next;
+	TCB_t* it = queue; //aqui não vai o next, porque daria errado no caso de a lista ter apenas um elemento
 	
 	do{		// position found
 		if (thread->credReal > it->credReal){
