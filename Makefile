@@ -5,7 +5,7 @@
 #
 #	PICCOLO THREADS (pithread)
 #
-#	João Lauro Garibaldi Jr		1xxxxx
+#	João Lauro Garibaldi Jr		195505
 #	Khin Baptista				217443
 #
 #	This makefile creates libpithread.a inside the lib subdirectory

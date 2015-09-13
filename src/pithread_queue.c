@@ -1,5 +1,4 @@
-#ifndef __pithread_queue__
-#define __pithread_queue__
+#include "pithread_queue.h"
 
 TCB_t* NextThread(TCB_t* queue){
 	if (queue == NULL)

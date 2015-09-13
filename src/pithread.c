@@ -1,7 +1,7 @@
 #include <ucontext.h>
-#include "../include/pidata.h"
-#include "../include/pithread.h"
-#include "../include/pithread_queue.h"
+#include "pidata.h"
+#include "pithread.h"
+#include "pithread_queue.h"
 
 TCB_t* activeThreads;
 TCB_t* expiredThreads;
