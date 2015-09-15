@@ -1,31 +1,31 @@
 #include "pithread_queue.h"
 
-TCB_t* NextThread(TCB_t* queue){
+TCB_t* NextThread(TCB_t** queue){
 	if (queue == NULL)
 		return NULL;
 	
-	TCB_t* next = queue;
-	queue = queue->next;
+	TCB_t* next = *queue;
+	*queue = (*queue)->next;
 	
 	return next;
 }
 
-void AddThread(TCB_t* queue, TCB_t* thread){
+void AddThread(TCB_t** queue, TCB_t* thread){
 	if (queue == NULL){
-		queue = thread;
+		*queue = thread;
 		thread->next = NULL;
 		thread->prev = NULL;
 		
 		return;
 	}
 	
-	/* New thread has the most credits */
-	if (thread->credReal > queue->credReal){
-		thread->next = queue;
-		queue->prev = thread;
+	/* New thread has more credits than first element */
+	if (thread->credReal > (*queue)->credReal){
+		thread->next = *queue;
+		(*queue)->prev = thread;
 		thread->prev = NULL;
 		
-		queue = thread;
+		*queue = thread;
 		
 		return;
 	}
@@ -34,7 +34,7 @@ void AddThread(TCB_t* queue, TCB_t* thread){
 	/* Insert new thread in position */
 	
 	// iterator
-	TCB_t* it = queue; //aqui não vai o next, porque daria errado no caso de a lista ter apenas um elemento
+	TCB_t* it = *queue;
 	
 	do{		// position found
 		if (thread->credReal > it->credReal){
@@ -58,14 +58,14 @@ void AddThread(TCB_t* queue, TCB_t* thread){
 	while (it != NULL);
 }
 
-void SwapQueues(TCB_t* a, TCB_t* b){
-	TCB_t* c = a;
+void SwapQueues(TCB_t** a, TCB_t** b){
+	TCB_t** c = a;
 	a = b;
 	b = c;
 }
 
-TCB_t* GetThread(TCB_t* queue, int tid){
-	TCB_t* it = queue;
+TCB_t* GetThread(TCB_t** queue, int tid){
+	TCB_t* it = *queue;
 	
 	while (it != NULL && it->tid != tid)
 		it = it->next;

@@ -98,7 +98,7 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 
 		thread->context = newContext;
 
-		AddThread(activeThreads, thread);
+		AddThread(&activeThreads, thread);
 
 		return 0;
 	}
@@ -116,22 +116,22 @@ int piwait(int tid){
 	ucontext_t unblockContext;
 
 
-	waitedThread = GetThread(activeThreads, tid);
+	waitedThread = GetThread(&activeThreads, tid);
 	if(!waitedThread){
-		waitedThread = GetThread(expiredThreads, tid);
+		waitedThread = GetThread(&expiredThreads, tid);
 		if(!waitedThread){
-			waitedThread = GetThread(blockedActiveThreads, tid);
+			waitedThread = GetThread(&blockedActiveThreads, tid);
 			if(!waitedThread){
-				waitedThread = GetThread(blockedExpiredThreads, tid);			
+				waitedThread = GetThread(&blockedExpiredThreads, tid);
 				if(!waitedThread){
-					waitedThread = GetThread(mtxBlockedThreads, tid);			
+					waitedThread = GetThread(&mtxBlockedThreads, tid);
 				}
 			}
-		}	
+		}
 	}
 	
 	if(waitedThread){
-		if(!GetThread(waitedThreads, tid)){
+		if(!GetThread(&waitedThreads, tid)){
 			runningThread->state = BLOCKED;
 			
 			//SCHEDULER CONTEXT CREATION
@@ -234,37 +234,37 @@ void schedule(){
 		DecreaseCredits(runningThread);
 
 		if (runningThread->credReal == 0){
-			if(runningThread->state == ABLE){	
-				AddThread(expiredThreads, runningThread);
+			if(runningThread->state == ABLE){
+				AddThread(&expiredThreads, runningThread);
 			}
-			if(runningThread->state == BLOCKED){	
-				AddThread(blockedExpiredThreads, runningThread);
+			if(runningThread->state == BLOCKED){
+				AddThread(&blockedExpiredThreads, runningThread);
 			}
 		}
 		else{
 			if(runningThread->state == ABLE){
-				AddThread(blockedActiveThreads, runningThread);
+				AddThread(&blockedActiveThreads, runningThread);
 			}
 			if(runningThread->state == BLOCKED){
-				AddThread(blockedExpiredThreads, runningThread);
+				AddThread(&blockedExpiredThreads, runningThread);
 			}
-		}		
+		}
 
 		
 
 	}
-	// IF THE THREAD IS FINISHED, 
+	// IF THE THREAD IS FINISHED,
 	// FREE THE TCB MEMORY
 	else{
-		free(runningThread);	
+		free(runningThread);
 	}
 
-	// SELECTS NEXT THREAD TO RUN	
-	runningThread = NextThread(activeThreads);
+	// SELECTS NEXT THREAD TO RUN
+	runningThread = NextThread(&activeThreads);
 
 	if (runningThread == NULL){
-		SwapQueues(activeThreads, expiredThreads);
-		runningThread = NextThread(activeThreads);
+		SwapQueues(&activeThreads, &expiredThreads);
+		runningThread = NextThread(&activeThreads);
 	}
 	
 
@@ -275,15 +275,15 @@ void schedule(){
 void unblock(int tid){
 	TCB_t* blockedThread;
 
-	blockedThread = GetThread(blockedActiveThreads, tid);
+	blockedThread = GetThread(&blockedActiveThreads, tid);
 
 	if(!blockedThread){
-		blockedThread = GetThread(blockedExpiredThreads, tid);
+		blockedThread = GetThread(&blockedExpiredThreads, tid);
 		blockedThread->state = ABLE;
-		AddThread(expiredThreads, blockedThread);
+		AddThread(&expiredThreads, blockedThread);
 	}else{
 		blockedThread->state = ABLE;
-		AddThread(activeThreads, blockedThread);		
+		AddThread(&activeThreads, blockedThread);
 	}
 	
 	finishThread();
