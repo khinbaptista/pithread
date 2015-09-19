@@ -6,18 +6,23 @@
 TCB_t* activeThreads;
 TCB_t* expiredThreads;
 
-TCB_t* blockedActiveThreads;
-TCB_t* blockedExpiredThreads;
-TCB_t* mtxBlockedThreads;
 
-TCB_t* waitedThreads;
+TCB_t* blockedThreads = NULL;
+TCB_t* mtxBlockedThreads = NULL;
 
+TCB_t* aux;
 TCB_t* runningThread;
 
+char* newStack;
+	char mainStack[SIGSTKSZ];
+	char finishStack[SIGSTKSZ];
+	char schedulerStack[SIGSTKSZ];
 
-ucontext_t finishCtx;
+ucontext_t finishCtx[1];
+ucontext_t schedulerCtx[1];
 
 
+WaitQueue_t* waitTids;
 int counter;
 int initialized;
 
@@ -28,7 +33,7 @@ int inline CheckInit();
 void DecreaseCredits(TCB_t* t);
 void schedule();
 void finishThread();
-void unblock(int tid);
+void unblock();
 
 
 // Implementations
@@ -36,46 +41,50 @@ void unblock(int tid);
 void Initialize(){
 	if (initialized == 1) return;
 
-	ucontext_t mainCtx;
-	char mainStack[SIGSTKSZ];
-	char finishStack[SIGSTKSZ];
 	
 
 	initialized = 1;
 	counter = 0;
 
 	//FINISH THREAD CONTEXT CREATION
-	getcontext(&finishCtx);
-	finishCtx.uc_link = NULL;
-	finishCtx.uc_stack.ss_sp = finishStack;
-	finishCtx.uc_stack.ss_size = sizeof(finishStack);
+	getcontext(finishCtx);
+	finishCtx->uc_link = NULL;
+	finishCtx->uc_stack.ss_sp = finishStack;
+	finishCtx->uc_stack.ss_size = SIGSTKSZ;
+	finishCtx->uc_stack.ss_flags = 0;
 
-	makecontext(&finishCtx, (void (*)(void)) finishThread, 0, NULL);
+	makecontext(finishCtx, (void (*)(void)) finishThread, 0);
 
+	//SCHEDULER CONTEXT CREATION
+	getcontext(schedulerCtx);
+	schedulerCtx->uc_link = NULL;
+	schedulerCtx->uc_stack.ss_sp = schedulerStack;
+	schedulerCtx->uc_stack.ss_size = SIGSTKSZ;
+	schedulerCtx->uc_stack.ss_flags = 0;
+
+	makecontext(schedulerCtx, (void (*)(void)) schedule, 0);
 
 	//MAIN THREAD CREATION
 	TCB_t* mainThread = (TCB_t*)malloc(sizeof(TCB_t));
 
 	mainThread->tid = counter++;
 	mainThread->state = EXECUTION;
-	mainThread->credCreate = 0;
-	mainThread->credReal = 0;
+	mainThread->credCreate = 100;
+	mainThread->credReal = 100;
 
-	getcontext(&mainCtx);
+	getcontext(&mainThread->context);
 
-	mainCtx.uc_link = NULL;
-	mainCtx.uc_stack.ss_sp = mainStack;
-	mainCtx.uc_stack.ss_size = sizeof(mainStack);
-
-	mainThread->context = mainCtx;
+	mainThread->context.uc_link = finishCtx;
+	mainThread->context.uc_stack.ss_sp = mainStack;
+	mainThread->context.uc_stack.ss_size = SIGSTKSZ;
+	mainThread->context.uc_stack.ss_flags = 0;
 
 	runningThread = mainThread;
 }
 
 int picreate(int cred, void* (*entry)(void*), void *arg){
 	Initialize();
-	char newStack[SIGSTKSZ];
-	ucontext_t newContext;
+	newStack =(char*)malloc(SIGSTKSZ*(sizeof(char)));
 	TCB_t* thread;
 
 	if( ( thread = (TCB_t*)malloc(sizeof(TCB_t)) ) ){
@@ -85,22 +94,28 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 		thread->credCreate = cred;
 		thread->credReal = cred;
 
-		getcontext(&newContext);
-		newContext.uc_link = &finishCtx;
+		getcontext(&thread->context);
+		thread->context.uc_link = finishCtx;
 
-		newContext.uc_stack.ss_sp = newStack;
-		newContext.uc_stack.ss_size = sizeof(newStack);
+		thread->context.uc_stack.ss_sp = newStack;
+		thread->context.uc_stack.ss_size = SIGSTKSZ;
+		thread->context.uc_stack.ss_flags = 0;
+		
+		makecontext(&thread->context, (void (*)(void)) entry, 1, arg);
 
 		
-		makecontext(&newContext, (void (*)(void)) entry, 1, arg);
 
-		
 
-		thread->context = newContext;
+		activeThreads = AddThread(activeThreads, thread);
 
-		AddThread(&activeThreads, thread);
+		/*TCB_t* it = activeThreads;
 
-		return 0;
+		while(it){
+			printf("%d\n", it->tid);
+			it = it->next;
+		}
+		*/
+		return thread->tid;
 	}
 
 	return -1;
@@ -108,53 +123,39 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 
 int piwait(int tid){
 	TCB_t* waitedThread;
-	
-	char schedulerStack[SIGSTKSZ];
-	ucontext_t schedulerContext;
-	
-	char unblockStack[SIGSTKSZ];
-	ucontext_t unblockContext;
 
 
-	waitedThread = GetThread(&activeThreads, tid);
+	//printf("PIWAIT\n");
+	
+	//TRY TO GET THREAD TO BE WAITED FOR FROM
+	//THREAD LISTS
+	waitedThread = GetThread(activeThreads, tid);
+	/*if(waitedThread){
+		printf("%d\n", waitedThread->tid);
+	}*/
 	if(!waitedThread){
-		waitedThread = GetThread(&expiredThreads, tid);
 		if(!waitedThread){
-			waitedThread = GetThread(&blockedActiveThreads, tid);
+			waitedThread = GetThread(blockedThreads, tid);
 			if(!waitedThread){
-				waitedThread = GetThread(&blockedExpiredThreads, tid);
-				if(!waitedThread){
-					waitedThread = GetThread(&mtxBlockedThreads, tid);
-				}
+				waitedThread = GetThread(mtxBlockedThreads, tid);
 			}
 		}
 	}
 	
+	//IF FOUND THE SPECIFIED TID IN THREAD LISTS
 	if(waitedThread){
-		if(!GetThread(&waitedThreads, tid)){
+		//THE SPECIFIED TID CAN'T BE WAITED FOR
+		//ANOTHER THREAD
+		if(!GetWait(waitTids, tid)){
+			waitTids = AddWait(waitTids, tid, runningThread->tid);
+			
 			runningThread->state = BLOCKED;
 			
-			//SCHEDULER CONTEXT CREATION
-			getcontext(&schedulerContext);
-			schedulerContext.uc_link = NULL;
-			schedulerContext.uc_stack.ss_sp = schedulerStack;
-			schedulerContext.uc_stack.ss_size = sizeof(schedulerStack);
-
-			makecontext(&schedulerContext, (void (*)(void)) schedule, 0, NULL);
 			
-			//UNBLOCK CONTEXT CREATION
-			getcontext(&unblockContext);
-			unblockContext.uc_link = NULL;
-			unblockContext.uc_stack.ss_sp = unblockStack;
-			unblockContext.uc_stack.ss_size = sizeof(unblockStack);
-
-			makecontext(&unblockContext, (void (*)(void)) schedule, 1, runningThread->tid);
 			
-
-			waitedThread->context.uc_link = &unblockContext;
-
-			swapcontext(&runningThread->context, &schedulerContext);
-
+			
+			//printf("SAINDO PIWAIT\n");
+			swapcontext(&runningThread->context, schedulerCtx);
 			return 0;
 		}
 	}
@@ -172,26 +173,6 @@ int piyield(){
 	if (!CheckInit()) return -1;
 
 	
-	/*
-	DecreaseCredits(runningThread);
-
-	if (runningThread->credReal == 0)
-		AddThread(expiredThreads, runningThread);
-	else
-		AddThread(activeThreads, runningThread);
-
-	runningThread->state = ABLE;
-	oldThread = runningThread;
-	
-	runningThread = NextThread(activeThreads);
-
-	if (runningThread == NULL){
-		SwapQueues(activeThreads, expiredThreads);
-		runningThread = NextThread(activeThreads);
-	}
-	else{
-		runningThread->state = EXECUTION;
-	}*/
 	runningThread->state = ABLE;
 	oldThread = runningThread;
 	
@@ -219,14 +200,18 @@ void DecreaseCredits(TCB_t* t){
 
 // WHEN THREAD FINISHES
 void finishThread(){
+	printf("FNISH\n");
+	unblock();
+	printf("votouunblcok\n");
+	
 	runningThread->state = FINISHED;
 	schedule();
-	setcontext(&runningThread->context);
 }
 
 // SELECTS NEXT RUNNING THREAD
 void schedule(){
-
+	TCB_t* temporaryThreadQueue;
+	printf("SCHEDULE\n");
 	// IF RUNNING THREAD IS NOT FINISHED
 	// PUTS THE THREAD IN ONE OF THE TWO
 	// ABLE QUEUES
@@ -235,18 +220,18 @@ void schedule(){
 
 		if (runningThread->credReal == 0){
 			if(runningThread->state == ABLE){
-				AddThread(&expiredThreads, runningThread);
+				expiredThreads = AddThread(expiredThreads, runningThread);
 			}
 			if(runningThread->state == BLOCKED){
-				AddThread(&blockedExpiredThreads, runningThread);
+				blockedThreads = AddThread(blockedThreads, runningThread);
 			}
 		}
 		else{
 			if(runningThread->state == ABLE){
-				AddThread(&blockedActiveThreads, runningThread);
+				activeThreads = AddThread(activeThreads, runningThread);
 			}
 			if(runningThread->state == BLOCKED){
-				AddThread(&blockedExpiredThreads, runningThread);
+				blockedThreads = AddThread(blockedThreads, runningThread);
 			}
 		}
 
@@ -256,36 +241,83 @@ void schedule(){
 	// IF THE THREAD IS FINISHED,
 	// FREE THE TCB MEMORY
 	else{
+		printf("FREEING %d\n", runningThread->tid);
 		free(runningThread);
 	}
 
 	// SELECTS NEXT THREAD TO RUN
-	runningThread = NextThread(&activeThreads);
-
+	
+	//ERRADO, ELE PEGA O PRIMEIRO DA FILA, NAO O PROXIMO
+	//DOIS DIAS COM ESSE ERRO CARALHO, VSF. ah tri
+	//enfim descobri	
+	//runningThread = NextThread(activeThreads);
+	runningThread = activeThreads;
+	printf("TID %d\n", runningThread->tid);
 	if (runningThread == NULL){
-		SwapQueues(&activeThreads, &expiredThreads);
-		runningThread = NextThread(&activeThreads);
+		//printf("eh null :|");
+		
+		//acho que essa funcao nao funciona corretamente
+		//porque ao mudar a variavel local da funcao,
+		//como é ** vai alterar a variável que está
+		//referenciando		
+		//SwapQueues(&activeThreads, &expiredThreads);
+		
+		//CHANGE QUEUES
+		temporaryThreadQueue = expiredThreads;
+		expiredThreads = activeThreads;
+		activeThreads = temporaryThreadQueue;
+		activeThreads = RestoreCredits(activeThreads);
+
+		runningThread = activeThreads;
 	}
+	activeThreads = activeThreads->next;
+	runningThread->next = NULL;
+	runningThread->prev = NULL;
+	
+	if(activeThreads)	
+		activeThreads->prev = NULL;
 	
 
 	runningThread->state = EXECUTION;
+
+	//printf("AINDA NAO DEU MERDA");
+	setcontext(&runningThread->context);
 	
 }
 
-void unblock(int tid){
-	TCB_t* blockedThread;
-
-	blockedThread = GetThread(&blockedActiveThreads, tid);
-
-	if(!blockedThread){
-		blockedThread = GetThread(&blockedExpiredThreads, tid);
-		blockedThread->state = ABLE;
-		AddThread(&expiredThreads, blockedThread);
-	}else{
-		blockedThread->state = ABLE;
-		AddThread(&activeThreads, blockedThread);
-	}
+void unblock(){
 	
-	finishThread();
+	printf("UNBLOCK\n");
+	TCB_t* blockedThread = NULL;
+	WaitQueue_t* waited = NULL;
+	
+	//IF THERE ARE THREADS TO BE WAITED FOR	
+	if(waitTids){
+		//printf("TEM WAITEDS\n");
+	
+		//VERIFY IF THE FINISHED THREAD IS WAITED
+		//FOR ANOTHER THREAD
+		waited = GetWait(waitTids,runningThread->tid);
+		if(waited){
+			//printf("ACHOU WAITED\n");
+
+			//FIND THE CORRESPONDING BLOCKED THREAD,
+			//REMOVES IT FROM THE BLOCKED THREADS LIST
+			//AND ADDS IT TO THE ABLE THREADS LIST	
+			blockedThread = GetThread(blockedThreads, waited->waiting);
+			//printf("ACHOU BLOCKED %d\n", blockedThread->tid);
+				
+			blockedThread->state = ABLE;
+			//printf("ACHOU able\n");
+			
+			blockedThreads = RemoveThread(blockedThreads, blockedThread->tid);
+			waitTids = RemoveWait(waitTids,runningThread->tid);
+			
+			printf("ACHOU removewait\n");
+			activeThreads = AddThread(activeThreads, blockedThread);
+			printf("ACHOU addthread\n");				
+		}
+	}	
+
 
 }
