@@ -182,6 +182,18 @@ int piyield(){
 }
 
 
+int pimutex_init(pimutex_t *mtx){
+	if( ( mtx = (pimutex_t*)malloc(sizeof(pimutex_t)) ) ){
+		mtx->flag = 1;
+		mtx->first = NULL;
+		mtx->last = NULL;
+		return 1
+	}
+
+	return -1;
+}
+
+
 // Helper functions implementations
 
 int inline CheckInit(){
