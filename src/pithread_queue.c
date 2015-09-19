@@ -62,19 +62,19 @@ TCB_t* AddThread(TCB_t* queue, TCB_t* thread){
 	return queue;
 }
 
-TCB_t* AddToMutex(TCB_t* queue, TCB_t* thread){
-	if (queue == NULL){
+TCB_t* AddToMutex(TCB_t* mutexQueue, TCB_t* thread){
+	if (mutexQueue == NULL){
 		thread->next = NULL;
 		thread->prev = NULL;
-		queue = thread;
+		mutexQueue = thread;
 		
-		return queue;
+		return mutexQueue;
 	}
 	
 	/* Insert new thread in position */
 	
 	// iterator
-	TCB_t* it = queue;
+	TCB_t* it = mutexQueue;
 	
 	while (it->next != NULL){
 		it = it->next;
@@ -84,7 +84,16 @@ TCB_t* AddToMutex(TCB_t* queue, TCB_t* thread){
 	thread->prev = it;
 	thread->next = NULL;
 
-	return queue;
+	return mutexQueue;
+}
+
+TCB_t* RemoveFromMutex(TCB_t* mutexQueue){
+	if (mutexQueue){
+		mutexQueue = mutexQueue->next;
+		mutexQueue->prev = NULL;
+	}
+	return mutexQueue;
+	
 }
 
 void SwapQueues(TCB_t** a, TCB_t** b){

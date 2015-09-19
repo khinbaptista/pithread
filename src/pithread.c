@@ -6,6 +6,13 @@
 TCB_t* activeThreads = NULL;
 TCB_t* expiredThreads = NULL;
 TCB_t* blockedThreads = NULL;
+//NEEDS THIS LIST TO VERIFY WHICH THREADS
+//ARE BLOCKED BY MUTEX BECAUSE YOU DON'T
+//HAVE ACCESS TO ALL MUTEXES 
+//(YOU COULD MAKE A MUTEX LIST INSTEAD TO
+// HAVE A RECORD OF ALL MUTEXES CREATED
+//ALONG THE EXECUTION OF A PROGRAM)
+TCB_t* mutexBlockedThreads = NULL;
 
 TCB_t* runningThread = NULL;
 
@@ -123,20 +130,22 @@ int piwait(int tid){
 	TCB_t* waitedThread;
 
 
-	//printf("PIWAIT\n");
+	printf("PIWAIT\n");
 	
 	//TRY TO GET THREAD TO BE WAITED FOR FROM
 	//THREAD LISTS
 	waitedThread = GetThread(activeThreads, tid);
-	/*if(waitedThread){
-		printf("%d\n", waitedThread->tid);
-	}*/
 	if(!waitedThread){
 		if(!waitedThread){
 			waitedThread = GetThread(blockedThreads, tid);
-			
+			if(!waitedThread){
+				waitedThread = GetThread(mutexBlockedThreads, tid);
+			}
 		}
 	}
+	/*if(waitedThread){
+		printf("%d\n", waitedThread->tid);
+	}*/
 	
 	//IF FOUND THE SPECIFIED TID IN THREAD LISTS
 	if(waitedThread){
@@ -198,14 +207,41 @@ int pilock (pimutex_t *mtx){
 			runningThread->state = BLOCKED;
 			mutexBlock = 1;
 			//PUTS THREAD IN MUTEX LOCKED LIST
+			mutexBlockedThreads = AddThread(mutexBlockedThreads, runningThread);			
 			mtx->first = AddToMutex(mtx->first, runningThread);
-			schedule();	
+
+			swapcontext(&runningThread->context, schedulerCtx);	
 		}
 		//LOCK MUTEX	
 		mtx->flag = 0;
 		
 		
 		return 0;	
+	}
+	return -1;
+}
+
+int piunlock (pimutex_t *mtx){
+	TCB_t* blocked;
+	if(mtx){
+		//IF MUTEX IS ALREADY LOCKED BY ANOTHER THREAD
+		if(!mtx->flag){
+			//UNLOCK MUTEX
+			mtx->flag = 1;
+			blocked = mtx->first;
+			if(blocked){
+				blocked->next = NULL;
+				mutexBlockedThreads = RemoveThread(mutexBlockedThreads, blocked->tid);
+				mtx->first = RemoveFromMutex(mtx->first);
+				if(blocked->credReal){
+					activeThreads = AddThread(activeThreads, blocked);
+				}
+				else{
+					expiredThreads = AddThread(expiredThreads, blocked);		
+				}
+			}
+			return 0;	
+		}
 	}
 	return -1;
 }
@@ -346,6 +382,4 @@ void unblock(){
 			//printf("ACHOU addthread\n");				
 		}
 	}	
-
-
 }
