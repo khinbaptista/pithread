@@ -15,6 +15,7 @@ typedef struct WaitQueue {
 
 TCB_t* NextThread(TCB_t* queue);
 TCB_t* AddThread(TCB_t* queue, TCB_t* thread);
+TCB_t* AddToMutex(TCB_t* queue, TCB_t* thread);
 void SwapQueues(TCB_t** a, TCB_t** b);
 TCB_t* GetThread(TCB_t* queue, int tid);
 TCB_t* RemoveThread(TCB_t* queue, int tid);

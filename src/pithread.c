@@ -3,17 +3,14 @@
 #include "pithread.h"
 #include "pithread_queue.h"
 
-TCB_t* activeThreads;
-TCB_t* expiredThreads;
-
-
+TCB_t* activeThreads = NULL;
+TCB_t* expiredThreads = NULL;
 TCB_t* blockedThreads = NULL;
-TCB_t* mtxBlockedThreads = NULL;
 
-TCB_t* aux;
-TCB_t* runningThread;
+TCB_t* runningThread = NULL;
 
-char* newStack;
+char* newStack = NULL;
+
 	char mainStack[SIGSTKSZ];
 	char finishStack[SIGSTKSZ];
 	char schedulerStack[SIGSTKSZ];
@@ -25,6 +22,7 @@ ucontext_t schedulerCtx[1];
 WaitQueue_t* waitTids;
 int counter;
 int initialized;
+int mutexBlock = 0;
 
 // Helper functions signatures
 
@@ -204,6 +202,9 @@ int pilock (pimutex_t *mtx){
 	else{
 		runningThread->status = BLOCKED;
 		
+		//PUTS THREAD IN MUTEX LOCKED LIST
+		mtx->first = AddThread(mtx->first, runningThread)
+		
 	}
 }
 
@@ -254,7 +255,12 @@ void schedule(){
 		}
 		else{
 			if(runningThread->state == BLOCKED){
-				blockedThreads = AddThread(blockedThreads, runningThread);
+				if(mutexBlock){
+					mutexBlock = 0;
+				}
+				else{
+					blockedThreads = AddThread(blockedThreads, runningThread);
+				}
 			}
 		}
 	}
