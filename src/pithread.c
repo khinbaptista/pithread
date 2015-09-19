@@ -187,12 +187,25 @@ int pimutex_init(pimutex_t *mtx){
 		mtx->flag = 1;
 		mtx->first = NULL;
 		mtx->last = NULL;
-		return 1
+		return 1;
 	}
 
 	return -1;
 }
 
+
+int pilock (pimutex_t *mtx){
+
+	//IF MUTEX IS FREE
+	if(mtx->flag){
+		mutex->flag = 0;
+	}
+	//IF MUTEX IS ALREADY LOCKED BY ANOTHER THREAD
+	else{
+		runningThread->status = BLOCKED;
+		
+	}
+}
 
 // Helper functions implementations
 
@@ -229,26 +242,21 @@ void schedule(){
 	// ABLE QUEUES
 	if(runningThread->state != FINISHED){
 		DecreaseCredits(runningThread);
-
-		if (runningThread->credReal == 0){
-			if(runningThread->state == ABLE){
+		
+		if(runningThread->state == ABLE){
+			
+			if (runningThread->credReal == 0){
 				expiredThreads = AddThread(expiredThreads, runningThread);
 			}
-			if(runningThread->state == BLOCKED){
-				blockedThreads = AddThread(blockedThreads, runningThread);
+			else{
+				activeThreads = AddThread(activeThreads, runningThread);
 			}
 		}
 		else{
-			if(runningThread->state == ABLE){
-				activeThreads = AddThread(activeThreads, runningThread);
-			}
 			if(runningThread->state == BLOCKED){
 				blockedThreads = AddThread(blockedThreads, runningThread);
 			}
 		}
-
-		
-
 	}
 	// IF THE THREAD IS FINISHED,
 	// FREE THE TCB MEMORY
@@ -264,7 +272,7 @@ void schedule(){
 	//enfim descobri	
 	//runningThread = NextThread(activeThreads);
 	runningThread = activeThreads;
-	printf("TID %d\n", runningThread->tid);
+	//printf("TID %d\n", runningThread->tid);
 	if (runningThread == NULL){
 		//printf("eh null :|");
 		
@@ -299,7 +307,7 @@ void schedule(){
 
 void unblock(){
 	
-	printf("UNBLOCK\n");
+	//printf("UNBLOCK\n");
 	TCB_t* blockedThread = NULL;
 	WaitQueue_t* waited = NULL;
 	
@@ -325,9 +333,9 @@ void unblock(){
 			blockedThreads = RemoveThread(blockedThreads, blockedThread->tid);
 			waitTids = RemoveWait(waitTids,runningThread->tid);
 			
-			printf("ACHOU removewait\n");
+			//printf("ACHOU removewait\n");
 			activeThreads = AddThread(activeThreads, blockedThread);
-			printf("ACHOU addthread\n");				
+			//printf("ACHOU addthread\n");				
 		}
 	}	
 
