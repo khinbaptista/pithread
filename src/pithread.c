@@ -134,9 +134,7 @@ int piwait(int tid){
 	if(!waitedThread){
 		if(!waitedThread){
 			waitedThread = GetThread(blockedThreads, tid);
-			if(!waitedThread){
-				waitedThread = GetThread(mtxBlockedThreads, tid);
-			}
+			
 		}
 	}
 	
@@ -194,18 +192,22 @@ int pimutex_init(pimutex_t *mtx){
 
 int pilock (pimutex_t *mtx){
 
-	//IF MUTEX IS FREE
-	if(mtx->flag){
-		mutex->flag = 0;
-	}
-	//IF MUTEX IS ALREADY LOCKED BY ANOTHER THREAD
-	else{
-		runningThread->status = BLOCKED;
+	if(mtx){
+		//IF MUTEX IS ALREADY LOCKED BY ANOTHER THREAD
+		if(!mtx->flag){
+			runningThread->state = BLOCKED;
+			mutexBlock = 1;
+			//PUTS THREAD IN MUTEX LOCKED LIST
+			mtx->first = AddToMutex(mtx->first, runningThread);
+			schedule();	
+		}
+		//LOCK MUTEX	
+		mtx->flag = 0;
 		
-		//PUTS THREAD IN MUTEX LOCKED LIST
-		mtx->first = AddThread(mtx->first, runningThread)
 		
+		return 0;	
 	}
+	return -1;
 }
 
 // Helper functions implementations
@@ -237,7 +239,7 @@ void finishThread(){
 // SELECTS NEXT RUNNING THREAD
 void schedule(){
 	TCB_t* temporaryThreadQueue;
-	printf("SCHEDULE\n");
+	//printf("SCHEDULE\n");
 	// IF RUNNING THREAD IS NOT FINISHED
 	// PUTS THE THREAD IN ONE OF THE TWO
 	// ABLE QUEUES
