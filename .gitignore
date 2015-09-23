@@ -6,3 +6,5 @@
 exemplos/
 !exemplos/*.c
 !exemplos/Makefile
+
+testes/*.run
