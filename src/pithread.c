@@ -8,7 +8,7 @@ TCB_t* expiredThreads = NULL;
 TCB_t* blockedThreads = NULL;
 //NEEDS THIS LIST TO VERIFY WHICH THREADS
 //ARE BLOCKED BY MUTEX BECAUSE YOU DON'T
-//HAVE ACCESS TO ALL MUTEXES 
+//HAVE ACCESS TO ALL MUTEXES
 //(YOU COULD MAKE A MUTEX LIST INSTEAD TO
 // HAVE A RECORD OF ALL MUTEXES CREATED
 //ALONG THE EXECUTION OF A PROGRAM)
@@ -31,6 +31,8 @@ int counter;
 int initialized;
 int mutexBlock = 0;
 
+int debug = 0;
+
 // Helper functions signatures
 
 void Initialize(void);
@@ -46,7 +48,7 @@ void unblock();
 void Initialize(){
 	if (initialized == 1) return;
 
-	
+
 
 	initialized = 1;
 	counter = 0;
@@ -105,10 +107,10 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 		thread->context.uc_stack.ss_sp = newStack;
 		thread->context.uc_stack.ss_size = SIGSTKSZ;
 		thread->context.uc_stack.ss_flags = 0;
-		
+
 		makecontext(&thread->context, (void (*)(void)) entry, 1, arg);
 
-		
+
 
 
 		activeThreads = AddThread(activeThreads, thread);
@@ -129,9 +131,9 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 int piwait(int tid){
 	TCB_t* waitedThread;
 
+	if (debug == 1)
+		printf("PIWAIT\n");
 
-	printf("PIWAIT\n");
-	
 	//TRY TO GET THREAD TO BE WAITED FOR FROM
 	//THREAD LISTS
 	waitedThread = GetThread(activeThreads, tid);
@@ -146,19 +148,19 @@ int piwait(int tid){
 	/*if(waitedThread){
 		printf("%d\n", waitedThread->tid);
 	}*/
-	
+
 	//IF FOUND THE SPECIFIED TID IN THREAD LISTS
 	if(waitedThread){
 		//THE SPECIFIED TID CAN'T BE WAITED FOR
 		//ANOTHER THREAD
 		if(!GetWait(waitTids, tid)){
 			waitTids = AddWait(waitTids, tid, runningThread->tid);
-			
+
 			runningThread->state = BLOCKED;
-			
-			
-			
-			
+
+
+
+
 			//printf("SAINDO PIWAIT\n");
 			swapcontext(&runningThread->context, schedulerCtx);
 			return 0;
@@ -177,10 +179,10 @@ int piyield(){
 
 	if (!CheckInit()) return -1;
 
-	
+
 	runningThread->state = ABLE;
 	oldThread = runningThread;
-	
+
 	schedule();
 
 	return swapcontext(&oldThread->context, &runningThread->context);
@@ -207,16 +209,16 @@ int pilock (pimutex_t *mtx){
 			runningThread->state = BLOCKED;
 			mutexBlock = 1;
 			//PUTS THREAD IN MUTEX LOCKED LIST
-			mutexBlockedThreads = AddThread(mutexBlockedThreads, runningThread);			
+			mutexBlockedThreads = AddThread(mutexBlockedThreads, runningThread);
 			mtx->first = AddToMutex(mtx->first, runningThread);
 
-			swapcontext(&runningThread->context, schedulerCtx);	
+			swapcontext(&runningThread->context, schedulerCtx);
 		}
-		//LOCK MUTEX	
+		//LOCK MUTEX
 		mtx->flag = 0;
-		
-		
-		return 0;	
+
+
+		return 0;
 	}
 	return -1;
 }
@@ -237,10 +239,10 @@ int piunlock (pimutex_t *mtx){
 					activeThreads = AddThread(activeThreads, blocked);
 				}
 				else{
-					expiredThreads = AddThread(expiredThreads, blocked);		
+					expiredThreads = AddThread(expiredThreads, blocked);
 				}
 			}
-			return 0;	
+			return 0;
 		}
 	}
 	return -1;
@@ -264,10 +266,13 @@ void DecreaseCredits(TCB_t* t){
 
 // WHEN THREAD FINISHES
 void finishThread(){
-	printf("FNISH\n");
+	if (debug == 1)
+		printf("FNISH\n");
 	unblock();
-	printf("votouunblcok\n");
-	
+
+	if (debug == 1)
+		printf("votouunblcok\n");
+
 	runningThread->state = FINISHED;
 	schedule();
 }
@@ -281,9 +286,9 @@ void schedule(){
 	// ABLE QUEUES
 	if(runningThread->state != FINISHED){
 		DecreaseCredits(runningThread);
-		
+
 		if(runningThread->state == ABLE){
-			
+
 			if (runningThread->credReal == 0){
 				expiredThreads = AddThread(expiredThreads, runningThread);
 			}
@@ -305,27 +310,29 @@ void schedule(){
 	// IF THE THREAD IS FINISHED,
 	// FREE THE TCB MEMORY
 	else{
-		printf("FREEING %d\n", runningThread->tid);
+		if (debug == 1)
+			printf("FREEING %d\n", runningThread->tid);
+
 		free(runningThread);
 	}
 
 	// SELECTS NEXT THREAD TO RUN
-	
+
 	//ERRADO, ELE PEGA O PRIMEIRO DA FILA, NAO O PROXIMO
 	//DOIS DIAS COM ESSE ERRO CARALHO, VSF. ah tri
-	//enfim descobri	
+	//enfim descobri
 	//runningThread = NextThread(activeThreads);
 	runningThread = activeThreads;
 	//printf("TID %d\n", runningThread->tid);
 	if (runningThread == NULL){
 		//printf("eh null :|");
-		
+
 		//acho que essa funcao nao funciona corretamente
 		//porque ao mudar a variavel local da funcao,
 		//como é ** vai alterar a variável que está
-		//referenciando		
+		//referenciando
 		//SwapQueues(&activeThreads, &expiredThreads);
-		
+
 		//CHANGE QUEUES
 		temporaryThreadQueue = expiredThreads;
 		expiredThreads = activeThreads;
@@ -337,28 +344,28 @@ void schedule(){
 	activeThreads = activeThreads->next;
 	runningThread->next = NULL;
 	runningThread->prev = NULL;
-	
-	if(activeThreads)	
+
+	if(activeThreads)
 		activeThreads->prev = NULL;
-	
+
 
 	runningThread->state = EXECUTION;
 
 	//printf("AINDA NAO DEU MERDA");
 	setcontext(&runningThread->context);
-	
+
 }
 
 void unblock(){
-	
+
 	//printf("UNBLOCK\n");
 	TCB_t* blockedThread = NULL;
 	WaitQueue_t* waited = NULL;
-	
-	//IF THERE ARE THREADS TO BE WAITED FOR	
+
+	//IF THERE ARE THREADS TO BE WAITED FOR
 	if(waitTids){
 		//printf("TEM WAITEDS\n");
-	
+
 		//VERIFY IF THE FINISHED THREAD IS WAITED
 		//FOR ANOTHER THREAD
 		waited = GetWait(waitTids,runningThread->tid);
@@ -367,19 +374,19 @@ void unblock(){
 
 			//FIND THE CORRESPONDING BLOCKED THREAD,
 			//REMOVES IT FROM THE BLOCKED THREADS LIST
-			//AND ADDS IT TO THE ABLE THREADS LIST	
+			//AND ADDS IT TO THE ABLE THREADS LIST
 			blockedThread = GetThread(blockedThreads, waited->waiting);
 			//printf("ACHOU BLOCKED %d\n", blockedThread->tid);
-				
+
 			blockedThread->state = ABLE;
 			//printf("ACHOU able\n");
-			
+
 			blockedThreads = RemoveThread(blockedThreads, blockedThread->tid);
 			waitTids = RemoveWait(waitTids,runningThread->tid);
-			
+
 			//printf("ACHOU removewait\n");
 			activeThreads = AddThread(activeThreads, blockedThread);
-			//printf("ACHOU addthread\n");				
+			//printf("ACHOU addthread\n");
 		}
-	}	
+	}
 }

@@ -1,3 +1,8 @@
 *.o
 *.pdf
 *.a
+
+
+exemplos/
+!exemplos/*.c
+!exemplos/Makefile
