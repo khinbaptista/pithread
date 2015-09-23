@@ -1,7 +1,7 @@
 *.o
 *.pdf
 *.a
-
+.fuse_hidden*
 
 exemplos/
 !exemplos/*.c
