@@ -2,7 +2,7 @@
 
 
 TCB_t* NextThread(TCB_t* queue){
-	TCB_t* next;	
+	TCB_t* next;
 	if (queue == NULL)
 		return NULL;
 	
@@ -97,9 +97,9 @@ TCB_t* RemoveFromMutex(TCB_t* mutexQueue){
 }
 
 void SwapQueues(TCB_t** a, TCB_t** b){
-	TCB_t** c = a;
-	a = b;
-	b = c;
+	TCB_t* c = *a;
+	*a = *b;
+	*b = c;
 }
 
 TCB_t* GetThread(TCB_t* queue, int tid){
@@ -127,10 +127,10 @@ TCB_t* RemoveThread(TCB_t* queue, int tid){
 	while (it != NULL && it->tid != tid)
 		it = it->next;
 	
-	if(it){	
+	if(it){
 		if(it->prev)
 			it->prev->next = it->next;
-		if(it->next)		
+		if(it->next)
 			it->next->prev = it->prev;
 	}
 
@@ -180,10 +180,10 @@ WaitQueue_t* AddWait(WaitQueue_t* queue, int tid, int waiting){
 		else{
 			while (it->next != NULL)
 				it = it->next;
-			it->next = node;			
+			it->next = node;
 		}
 	
-	}	
+	}
 	return queue;
 
 }

@@ -179,7 +179,6 @@ int piyield(){
 
 	if (!CheckInit()) return -1;
 
-
 	runningThread->state = ABLE;
 	oldThread = runningThread;
 
@@ -279,7 +278,6 @@ void finishThread(){
 
 // SELECTS NEXT RUNNING THREAD
 void schedule(){
-	TCB_t* temporaryThreadQueue;
 	//printf("SCHEDULE\n");
 	// IF RUNNING THREAD IS NOT FINISHED
 	// PUTS THE THREAD IN ONE OF THE TWO
@@ -318,25 +316,13 @@ void schedule(){
 
 	// SELECTS NEXT THREAD TO RUN
 
-	//ERRADO, ELE PEGA O PRIMEIRO DA FILA, NAO O PROXIMO
-	//DOIS DIAS COM ESSE ERRO CARALHO, VSF. ah tri
-	//enfim descobri
-	//runningThread = NextThread(activeThreads);
 	runningThread = activeThreads;
 	//printf("TID %d\n", runningThread->tid);
 	if (runningThread == NULL){
 		//printf("eh null :|");
 
-		//acho que essa funcao nao funciona corretamente
-		//porque ao mudar a variavel local da funcao,
-		//como é ** vai alterar a variável que está
-		//referenciando
-		//SwapQueues(&activeThreads, &expiredThreads);
+		SwapQueues(&activeThreads, &expiredThreads);
 
-		//CHANGE QUEUES
-		temporaryThreadQueue = expiredThreads;
-		expiredThreads = activeThreads;
-		activeThreads = temporaryThreadQueue;
 		activeThreads = RestoreCredits(activeThreads);
 
 		runningThread = activeThreads;
