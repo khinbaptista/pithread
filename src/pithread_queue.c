@@ -25,7 +25,6 @@ TCB_t* AddThread(TCB_t* queue, TCB_t* thread){
 	
 	/* New thread has more credits than first element */
 	if (thread->credReal > queue->credReal){
-		printf("MAIOR %d\n", thread->tid);
 		thread->next = queue;
 		queue->prev = thread;
 		thread->prev = NULL;

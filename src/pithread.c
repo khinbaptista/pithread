@@ -18,9 +18,7 @@ TCB_t* runningThread = NULL;
 
 char* newStack = NULL;
 
-	char mainStack[SIGSTKSZ];
-	char finishStack[SIGSTKSZ];
-	char schedulerStack[SIGSTKSZ];
+	
 
 ucontext_t finishCtx[1];
 ucontext_t schedulerCtx[1];
@@ -48,7 +46,9 @@ void unblock();
 void Initialize(){
 	if (initialized == 1) return;
 
-
+	char mainStack[SIGSTKSZ];
+	char finishStack[SIGSTKSZ];
+	char schedulerStack[SIGSTKSZ];
 
 	initialized = 1;
 	counter = 0;
@@ -157,8 +157,8 @@ int piwait(int tid){
 			waitTids = AddWait(waitTids, tid, runningThread->tid);
 
 			runningThread->state = BLOCKED;
-
-
+		
+			//printf("%d esperando %d\n", runningThread->tid, tid);
 			//printf("SAINDO PIWAIT\n");
 			swapcontext(&runningThread->context, schedulerCtx);
 			return 0;
@@ -170,15 +170,11 @@ int piwait(int tid){
 }
 
 int piyield(){
-	TCB_t* oldThread;
-
 	if (!CheckInit()) return -1;
-
 	runningThread->state = ABLE;
-	oldThread = runningThread;
-
-	schedule();
-	swapcontext(&oldThread->context, &runningThread->context);
+	
+	//printf("%d\n", runningThread->tid);
+	swapcontext(&runningThread->context, schedulerCtx);
 
 	if (debug == 1)
 		printf("Returning from piyield...\n");
@@ -264,12 +260,16 @@ void DecreaseCredits(TCB_t* t){
 void finishThread(){
 	if (debug == 1)
 		printf("FNISH\n");
+//printf("FNISH\n");
+
 	unblock();
 
+		//printf("votouunblcok\n");
 	if (debug == 1)
 		printf("votouunblcok\n");
 
 	runningThread->state = FINISHED;
+	//printf("gosched");
 	schedule();
 }
 
@@ -281,22 +281,26 @@ void schedule(){
 	// ABLE QUEUES
 	if(runningThread->state != FINISHED){
 		DecreaseCredits(runningThread);
-
+		//printf("decrease %d\n", runningThread->tid);
 		if(runningThread->state == ABLE){
 
 			if (runningThread->credReal == 0){
+				//printf("expirada\n");
 				expiredThreads = AddThread(expiredThreads, runningThread);
 			}
 			else{
 				activeThreads = AddThread(activeThreads, runningThread);
+				//printf("nao expirada\n");
 			}
 		}
 		else{
 			if(runningThread->state == BLOCKED){
 				if(mutexBlock){
+					//printf("mtxblock\n");
 					mutexBlock = 0;
 				}
 				else{
+					//printf("bloqueada %d\n", runningThread->tid);
 					blockedThreads = AddThread(blockedThreads, runningThread);
 				}
 			}
@@ -305,16 +309,14 @@ void schedule(){
 	// IF THE THREAD IS FINISHED,
 	// FREE THE TCB MEMORY
 	else{
-		if (debug == 1)
-			printf("FREEING %d\n", runningThread->tid);
-
+		//printf("FREEING %d\n", runningThread->tid);
+		
 		free(runningThread);
 	}
 
 	// SELECTS NEXT THREAD TO RUN
 
 	runningThread = activeThreads;
-	//printf("TID %d\n", runningThread->tid);
 	if (runningThread == NULL){
 		//printf("eh null :|");
 
@@ -347,13 +349,15 @@ void unblock(){
 
 	//IF THERE ARE THREADS TO BE WAITED FOR
 	if(waitTids){
-		//printf("TEM WAITEDS\n");
+
+		//printf("TEM WAITEDS %d\n",runningThread->state);
 
 		//VERIFY IF THE FINISHED THREAD IS WAITED
 		//FOR ANOTHER THREAD
 		waited = GetWait(waitTids,runningThread->tid);
 		if(waited){
-			//printf("ACHOU WAITED\n");
+			//printf("maoe");
+			//printf("ACHOU WAITED %d\n", waited->tid);
 
 			//FIND THE CORRESPONDING BLOCKED THREAD,
 			//REMOVES IT FROM THE BLOCKED THREADS LIST

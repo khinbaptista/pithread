@@ -21,7 +21,7 @@ void* func2(void* arg){
 	for (; i < 10; i++){
 		printf("thread 2\n\n");
 		
-		//if (i % 5 == 0) piyield();
+		if (i % 5 == 0) piyield();
 	}
 	
 	return 0;
