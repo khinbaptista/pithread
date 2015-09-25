@@ -159,8 +159,6 @@ int piwait(int tid){
 			runningThread->state = BLOCKED;
 
 
-
-
 			//printf("SAINDO PIWAIT\n");
 			swapcontext(&runningThread->context, schedulerCtx);
 			return 0;
@@ -171,9 +169,6 @@ int piwait(int tid){
 
 }
 
-
-
-
 int piyield(){
 	TCB_t* oldThread;
 
@@ -183,10 +178,13 @@ int piyield(){
 	oldThread = runningThread;
 
 	schedule();
+	swapcontext(&oldThread->context, &runningThread->context);
 
-	return swapcontext(&oldThread->context, &runningThread->context);
+	if (debug == 1)
+		printf("Returning from piyield...\n");
+
+	return 0;
 }
-
 
 int pimutex_init(pimutex_t *mtx){
 	if( ( mtx = (pimutex_t*)malloc(sizeof(pimutex_t)) ) ){
@@ -250,8 +248,7 @@ int piunlock (pimutex_t *mtx){
 // Helper functions implementations
 
 int inline CheckInit(){
-	if (initialized != 1) return 0;
-	return 1;
+	return initialized == 1;
 }
 
 void DecreaseCredits(TCB_t* t){

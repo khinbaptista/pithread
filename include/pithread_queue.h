@@ -13,7 +13,7 @@ typedef struct WaitQueue {
 	struct WaitQueue 	*next;
 } WaitQueue_t;
 
-TCB_t* NextThread(TCB_t* queue);
+TCB_t* NextThread(TCB_t** queue);
 TCB_t* AddThread(TCB_t* queue, TCB_t* thread);
 TCB_t* AddToMutex(TCB_t* queue, TCB_t* thread);
 TCB_t* RemoveFromMutex(TCB_t* mutexQueue);

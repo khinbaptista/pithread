@@ -1,14 +1,17 @@
 #include "pithread_queue.h"
 
 
-TCB_t* NextThread(TCB_t* queue){
-	TCB_t* next;
+TCB_t* NextThread(TCB_t** queue){
+	TCB_t* first;
+	
 	if (queue == NULL)
 		return NULL;
 	
-	next = queue->next;
+	first = *queue;
+	*queue = (*queue)->next;
+	first->next = NULL;
 	
-	return next;
+	return first;
 }
 
 TCB_t* AddThread(TCB_t* queue, TCB_t* thread){
