@@ -11,16 +11,19 @@
 ########################################################################
 
 CC = gcc
-FLAGS = -Wall -std=c99
+FLAGS = -Wall
 
 LIB_DIR = ../lib
 INC_DIR = ../include
 
 ########################################################################
 
-all: teste1.run
+all: yield.run mutex.run
 
-teste1.run: teste1.c $(LIB_DIR)/libpithread.a
+yield.run: yield.c $(LIB_DIR)/libpithread.a
+	$(CC) -o $@ $^ -I$(INC_DIR) -L$(LIB_DIR) -lpithread $(FLAGS)
+
+mutex.run: mutex.c $(LIB_DIR)/libpithread.a
 	$(CC) -o $@ $^ -I$(INC_DIR) -L$(LIB_DIR) -lpithread $(FLAGS)
 
 clean:
