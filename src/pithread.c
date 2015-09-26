@@ -180,22 +180,32 @@ int piyield(){
 int pimutex_init(pimutex_t *mtx){
 	Initialize();
 	
-	if( ( mtx = (pimutex_t*)malloc(sizeof(pimutex_t)) ) ){
+	mtx = (pimutex_t*)malloc(sizeof(pimutex_t));
+	
+	if (mtx != NULL){
 		mtx->flag = 1;
 		mtx->first = NULL;
 		mtx->last = NULL;
+		
+		printf("Mutex created successfully. %d\n", mtx->flag);
 		return 1;
 	}
 
+	printf("Failed to malloc\n");
 	return -1;
 }
 
-int pilock (pimutex_t *mtx){
+int pilock(pimutex_t *mtx){
 	if (!CheckInit()) return -1;
 
-	if(mtx){
+	printf("\nPilock\n");
+
+	if(mtx != NULL){
 		//IF MUTEX IS ALREADY LOCKED BY ANOTHER THREAD
-		if(!mtx->flag){
+		if(mtx->flag == 0){
+			
+			printf("Mutex is already locked... %d\n", mtx->flag);
+			
 			runningThread->state = BLOCKED;
 			mutexBlock = 1;
 			//PUTS THREAD IN MUTEX LOCKED LIST
@@ -204,27 +214,37 @@ int pilock (pimutex_t *mtx){
 
 			swapcontext(&runningThread->context, schedulerCtx);
 		}
+		
+		printf("Locking mutex...\n");
 		//LOCK MUTEX
 		mtx->flag = 0;
 
 		return 0;
 	}
+	
+	printf("Error with mutex\n");
+	
 	return -1;
 }
 
 int piunlock (pimutex_t *mtx){
 	TCB_t* blocked;
 	
-	if(mtx){
+	printf("\nPiunlock\n");
+	
+	if(mtx != NULL){
 		//IF MUTEX IS ALREADY LOCKED BY ANOTHER THREAD
-		if(!mtx->flag){
+		if(mtx->flag == 0){
+			
 			//UNLOCK MUTEX
 			mtx->flag = 1;
 			blocked = mtx->first;
+			
 			if(blocked){
 				blocked->next = NULL;
 				mutexBlockedThreads = RemoveThread(mutexBlockedThreads, blocked->tid);
 				mtx->first = RemoveFromMutex(mtx->first);
+				
 				if(blocked->credReal){
 					activeThreads = AddThread(activeThreads, blocked);
 				}
@@ -235,6 +255,9 @@ int piunlock (pimutex_t *mtx){
 			return 0;
 		}
 	}
+	
+	printf("Error with mutex\n");
+	
 	return -1;
 }
 
@@ -298,7 +321,7 @@ void schedule(){
 		else{
 			if(runningThread->state == BLOCKED){
 				if(mutexBlock){
-					//printf("mtxblock\n");
+					printf("mtxblock\n");
 					mutexBlock = 0;
 				}
 				else{

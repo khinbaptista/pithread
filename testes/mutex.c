@@ -11,6 +11,7 @@ pimutex_t* mutex;
 // thread functions
 
 void* func1(void* arg){
+	printf("\nThread 1 started.\n");
 	pilock(mutex);
 		printf("Thread 1 inside restricted area\n");
 		a -= 10;
@@ -23,6 +24,7 @@ void* func1(void* arg){
 }
 
 void* func2(void* arg){
+	printf("\nThread 2 started.\n");
 	pilock(mutex);
 		printf("Thread 2 entered restricted area\n");
 		piyield();
@@ -40,22 +42,23 @@ void* func2(void* arg){
 // main
 
 int main(int argc, char* argv[]){
-	a = 0; b = 0;
+	a = 0;
 	
-	printf("Initializing mutex...\n");
+	printf("\nInitializing mutex... ");
 	pimutex_init(mutex);
 	
-	printf("Creating threads\n");
+	if (mutex == NULL){ printf("Pointers hate you.\n"); }
+	
+	printf("\nCreating threads... ");
 	id1 = picreate(20, func1, 0);
 	id2 = picreate(30, func2, 0);
-	
 	printf("Created threads %d and %d\n", id1, id2);
 	
 	printf("Waiting threads to finish...\n");
 	piwait(id1);
 	piwait(id2);
 	
-	printf("a = %d\n", a);
+	printf("\na = %d\n", a);
 	printf("Returned to main. Exiting...\n");
 	
 	return 0;
