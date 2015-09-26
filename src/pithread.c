@@ -207,7 +207,6 @@ int pilock (pimutex_t *mtx){
 		//LOCK MUTEX
 		mtx->flag = 0;
 
-
 		return 0;
 	}
 	return -1;
