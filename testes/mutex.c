@@ -56,6 +56,7 @@ int main(int argc, char* argv[]){
 	
 	printf("Waiting threads to finish...\n");
 	piwait(id1);
+	
 	piwait(id2);
 	
 	printf("\na = %d\n", a);

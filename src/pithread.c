@@ -127,18 +127,25 @@ int piwait(int tid){
 	
 	TCB_t* waitedThread;
 
-	if (debug == 1)
-		printf("PIWAIT\n");
+	printf("PIWAIT\n");
 
 	//TRY TO GET THREAD TO BE WAITED FOR FROM
 	//THREAD LISTS
 	waitedThread = GetThread(activeThreads, tid);
-	if(!waitedThread){
+	printf("PIWAIT\n");
+if(!waitedThread){
+		printf("active");
 		if(!waitedThread){
 			waitedThread = GetThread(blockedThreads, tid);
+			printf("blocked");
 			if(!waitedThread){
 				waitedThread = GetThread(mutexBlockedThreads, tid);
+				
+				printf("mtx");
 			}
+			else
+				
+		printf("null");
 		}
 	}
 
@@ -179,8 +186,6 @@ int piyield(){
 
 int pimutex_init(pimutex_t *mtx){
 	Initialize();
-	
-	mtx = (pimutex_t*)malloc(sizeof(pimutex_t));
 	
 	if (mtx != NULL){
 		mtx->flag = 1;
@@ -241,10 +246,12 @@ int piunlock (pimutex_t *mtx){
 			blocked = mtx->first;
 			
 			if(blocked){
+				
 				blocked->next = NULL;
 				mutexBlockedThreads = RemoveThread(mutexBlockedThreads, blocked->tid);
 				mtx->first = RemoveFromMutex(mtx->first);
-				
+				printf("\nPiunlock2\n");
+
 				if(blocked->credReal){
 					activeThreads = AddThread(activeThreads, blocked);
 				}

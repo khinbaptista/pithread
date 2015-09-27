@@ -92,7 +92,8 @@ TCB_t* AddToMutex(TCB_t* mutexQueue, TCB_t* thread){
 TCB_t* RemoveFromMutex(TCB_t* mutexQueue){
 	if (mutexQueue){
 		mutexQueue = mutexQueue->next;
-		mutexQueue->prev = NULL;
+		if(mutexQueue)
+			mutexQueue->prev = NULL;
 	}
 	return mutexQueue;
 	
