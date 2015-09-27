@@ -47,8 +47,6 @@ int main(int argc, char* argv[]){
 	printf("\nInitializing mutex... ");
 	pimutex_init(&mutex);
 	
-	if (&mutex == NULL){ printf("Pointers hate you.\n"); }
-	
 	printf("\nCreating threads... ");
 	id1 = picreate(20, func1, 0);
 	id2 = picreate(30, func2, 0);

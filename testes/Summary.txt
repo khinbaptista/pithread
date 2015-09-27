@@ -1,0 +1,26 @@
+#################################################
+
+../exemplos/exemplo.c
+> picreate
+> piwait
+
+../exemplos/teste_prio.c
+> piyield
+> prioridades
+
+#################################################
+
+./mutex.c
+> picreate
+> pimutex_init
+> pilock
+> piunlock
+> piwait
+
+./yield.c
+> picreate
+> piyield
+> prioridades
+> piwait
+
+#################################################
