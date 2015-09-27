@@ -188,7 +188,7 @@ int pimutex_init(pimutex_t *mtx){
 		mtx->last = NULL;
 		
 		printf("Mutex created successfully. %d\n", mtx->flag);
-		return 1;
+		return 0;
 	}
 
 	printf("Failed to malloc\n");
