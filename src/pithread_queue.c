@@ -127,15 +127,19 @@ TCB_t* RestoreCredits(TCB_t* queue){
 TCB_t* RemoveThread(TCB_t* queue, int tid){
 	TCB_t* it = queue;
 	
-	while (it != NULL && it->tid != tid)
-		it = it->next;
+	if(it->next){	
+		while (it != NULL && it->tid != tid)
+			it = it->next;
 	
-	if(it){
-		if(it->prev)
-			it->prev->next = it->next;
-		if(it->next)
-			it->next->prev = it->prev;
+		if(it){
+			if(it->prev)
+				it->prev->next = it->next;
+			if(it->next)
+				it->next->prev = it->prev;
+		}
 	}
+	else
+		return NULL;
 
 	return queue;
 }
