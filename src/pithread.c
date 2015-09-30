@@ -94,6 +94,8 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 	TCB_t* thread;
 
 	if( ( thread = (TCB_t*)malloc(sizeof(TCB_t)) ) ){
+		if(cred > 100)
+			cred = 100;
 		// NEW THREAD CREATION
 		thread->tid = counter++;
 		thread->state = ABLE;	// precisa ter um state "CREATION"?
