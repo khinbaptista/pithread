@@ -90,33 +90,36 @@ void Initialize(){
 
 int picreate(int cred, void* (*entry)(void*), void *arg){
 	Initialize();
-	newStack =(char*)malloc(SIGSTKSZ*(sizeof(char)));
 	TCB_t* thread;
 
-	if( ( thread = (TCB_t*)malloc(sizeof(TCB_t)) ) ){
-		if(cred > 100)
-			cred = 100;
-		// NEW THREAD CREATION
-		thread->tid = counter++;
-		thread->state = ABLE;	// precisa ter um state "CREATION"?
-		thread->credCreate = cred;
-		thread->credReal = cred;
+	if( ( newStack = (char*)malloc(SIGSTKSZ*(sizeof(char)) ) ) ){
+		if( ( thread = (TCB_t*)malloc(sizeof(TCB_t)) ) ){
+			if(cred > 100)
+				cred = 100;
+			if(cred < 1)
+				cred = 1;
+			// NEW THREAD CREATION
+			thread->tid = counter++;
+			thread->state = ABLE;	// precisa ter um state "CREATION"?
+			thread->credCreate = cred;
+			thread->credReal = cred;
 
-		getcontext(&thread->context);
-		thread->context.uc_link = finishCtx;
+			getcontext(&thread->context);
+			thread->context.uc_link = finishCtx;
 
-		thread->context.uc_stack.ss_sp = newStack;
-		thread->context.uc_stack.ss_size = SIGSTKSZ;
-		thread->context.uc_stack.ss_flags = 0;
+			thread->context.uc_stack.ss_sp = newStack;
+			thread->context.uc_stack.ss_size = SIGSTKSZ;
+			thread->context.uc_stack.ss_flags = 0;
 
-		makecontext(&thread->context, (void (*)(void)) entry, 1, arg);
+			makecontext(&thread->context, (void (*)(void)) entry, 1, arg);
 
-		activeThreads = AddThread(activeThreads, thread);
+
+			activeThreads = AddThread(activeThreads, thread);
 
 		
-		return thread->tid;
+			return thread->tid;
+		}
 	}
-
 	
 	return -1;
 }
@@ -131,6 +134,8 @@ int piwait(int tid){
 	waitedThread = GetThread(activeThreads, tid);
 	
 	if(!waitedThread){
+		waitedThread = GetThread(expiredThreads, tid);
+	
 		if(!waitedThread){
 			waitedThread = GetThread(blockedThreads, tid);
 			if(!waitedThread){
