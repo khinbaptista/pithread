@@ -127,7 +127,7 @@ TCB_t* RestoreCredits(TCB_t* queue){
 TCB_t* RemoveThread(TCB_t* queue, int tid){
 	TCB_t* it = queue;
 	
-	if(it->next){	
+	if(it->next){
 		while (it != NULL && it->tid != tid)
 			it = it->next;
 	
@@ -155,21 +155,27 @@ WaitQueue_t* GetWait(WaitQueue_t* queue, int tid){
 
 WaitQueue_t* RemoveWait(WaitQueue_t* queue, int tid){
 	WaitQueue_t* it = queue;
+	WaitQueue_t* prev_it;
 	WaitQueue_t* removed;
+	
+	if (it == NULL) return queue;
 
-	if(it != NULL && it->tid != tid){
-		while (it->next != NULL && it->next->tid != tid)
-			it = it->next;
+	while (it != NULL && it->tid != tid){
+		prev_it = it;
+		it = it->next;
 	}
-	if(it->next){
-		removed = it->next;
-		it->next = it->next->next;
+
+	if(it != NULL){
+		removed = it;
+		
+		if (prev_it)
+			prev_it->next = it->next;
+		
 		removed->next = NULL;
 		free(removed);
 	}
 		
 	return queue;
-
 }
 
 WaitQueue_t* AddWait(WaitQueue_t* queue, int tid, int waiting){
