@@ -333,7 +333,6 @@ void schedule(){
 }
 
 void unblock(){
-	if (!CheckInit()) return;
 	
 	
 	TCB_t* blockedThread = NULL;
