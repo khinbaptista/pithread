@@ -22,17 +22,18 @@ char* newStack = NULL;
 ucontext_t finishCtx[1];
 ucontext_t schedulerCtx[1];
 
+
 WaitQueue_t* waitTids;
+
+
 int counter;
 int initialized;
 int mutexBlock = 0;
 
-int debug = 0;
 
 // Helper functions signatures
 
 void Initialize(void);
-int inline CheckInit();
 void DecreaseCredits(TCB_t* t);
 void schedule();
 void finishThread();
@@ -110,24 +111,18 @@ int picreate(int cred, void* (*entry)(void*), void *arg){
 
 		activeThreads = AddThread(activeThreads, thread);
 
-		if (debug == 1)
-			printf("Thread created: %d\n", thread->tid);
-
+		
 		return thread->tid;
 	}
 
-	if (debug == 1)
-		printf("Picreate error: failed to malloc");
-
+	
 	return -1;
 }
 
 int piwait(int tid){
-	if (!CheckInit()) return -1;
+	Initialize();
 	
 	TCB_t* waitedThread;
-
-	//printf("PIWAIT\n");
 
 	//TRY TO GET THREAD TO BE WAITED FOR FROM
 	//THREAD LISTS
@@ -144,8 +139,6 @@ int piwait(int tid){
 
 	//IF FOUND THE SPECIFIED TID IN THREAD LISTS
 	if(waitedThread){
-		if (debug == 1)
-			printf("Waited thread found: %d\n", waitedThread->tid);
 		
 		//THE SPECIFIED TID CAN'T BE WAITED FOR
 		//ANOTHER THREAD
@@ -154,8 +147,6 @@ int piwait(int tid){
 
 			runningThread->state = BLOCKED;
 		
-			//printf("%d esperando %d\n", runningThread->tid, tid);
-			//printf("SAINDO PIWAIT\n");
 			swapcontext(&runningThread->context, schedulerCtx);
 			return 0;
 		}
@@ -165,15 +156,12 @@ int piwait(int tid){
 }
 
 int piyield(){
-	if (!CheckInit()) return -1;
+	Initialize();
 	runningThread->state = ABLE;
 	
-	//printf("%d\n", runningThread->tid);
 	swapcontext(&runningThread->context, schedulerCtx);
 
-	if (debug == 1)
-		printf("Returning from piyield...\n");
-
+	
 	return 0;
 }
 
@@ -185,24 +173,20 @@ int pimutex_init(pimutex_t *mtx){
 		mtx->first = NULL;
 		mtx->last = NULL;
 		
-		//printf("Mutex created successfully. %d\n", mtx->flag);
 		return 0;
 	}
 
-	//printf("Failed to malloc\n");
 	return -1;
 }
 
 int pilock(pimutex_t *mtx){
-	if (!CheckInit()) return -1;
+	Initialize();
 
-	//printf("\nPilock\n");
-
+	
 	if(mtx != NULL){
 		//IF MUTEX IS ALREADY LOCKED BY ANOTHER THREAD
 		if(mtx->flag == 0){
 			
-			//printf("Mutex is already locked... %d\n", mtx->flag);
 			
 			runningThread->state = BLOCKED;
 			mutexBlock = 1;
@@ -213,19 +197,18 @@ int pilock(pimutex_t *mtx){
 			swapcontext(&runningThread->context, schedulerCtx);
 		}
 		
-		//printf("Locking mutex...\n");
 		//LOCK MUTEX
 		mtx->flag = 0;
 
 		return 0;
 	}
 	
-	//printf("Error with mutex\n");
-	
 	return -1;
 }
 
 int piunlock (pimutex_t *mtx){
+	Initialize();	
+	
 	TCB_t* blocked;
 	
 	
@@ -261,15 +244,10 @@ int piunlock (pimutex_t *mtx){
 
 // Helper functions implementations
 
-int inline CheckInit(){
-	return initialized == 1;
-}
 
 void DecreaseCredits(TCB_t* t){
 	if (!t) return;
 	
-	if (debug == 1)
-		printf("Decreasing credits from thread %d\n", t->tid);
 	
 	int credits = t->credReal;
 	credits -= EXECUTION_COST;
@@ -281,13 +259,9 @@ void DecreaseCredits(TCB_t* t){
 
 // WHEN THREAD FINISHES
 void finishThread(){
-	if (debug == 1)
-		printf("Finished thread %d\n", runningThread->tid);
 
 	unblock();
 
-	if (debug == 1)
-		printf("After unblock\n");
 
 	runningThread->state = FINISHED;
 
@@ -296,8 +270,6 @@ void finishThread(){
 
 // SELECTS NEXT RUNNING THREAD
 void schedule(){
-	if (debug == 1)
-		printf("Schedule\n");
 	
 	// IF RUNNING THREAD IS NOT FINISHED
 	// PUTS THE THREAD IN ONE OF THE TWO
@@ -308,24 +280,21 @@ void schedule(){
 		if(runningThread->state == ABLE){
 
 			if (runningThread->credReal == 0){
-				//printf("expirada\n");
 				expiredThreads = AddThread(expiredThreads, runningThread);
 			}
 			else{
 				activeThreads = AddThread(activeThreads, runningThread);
-				//printf("nao expirada\n");
 			}
 		}
 		else{
 			if(runningThread->state == BLOCKED){
 				if(mutexBlock){
-					//printf("mtxblock\n");
+					//if it was blocked while locking a mutex
+					//reset the flag and it was added to another queue
+					//in the pilock function
 					mutexBlock = 0;
 				}
 				else{
-					if (debug == 1)
-						printf("Blocked %d\n", runningThread->tid);
-					
 					blockedThreads = AddThread(blockedThreads, runningThread);
 				}
 			}
@@ -335,9 +304,6 @@ void schedule(){
 		// IF THE THREAD IS FINISHED,
 		// FREE THE TCB MEMORY
 		
-		if (debug == 1)
-			printf("Freeing thread %d\n", runningThread->tid);
-		
 		free(runningThread);
 	}
 
@@ -345,8 +311,7 @@ void schedule(){
 
 	runningThread = activeThreads;
 	if (runningThread == NULL){
-		//printf("eh null :|");
-
+		
 		SwapQueues(&activeThreads, &expiredThreads);
 
 		activeThreads = RestoreCredits(activeThreads);
@@ -363,17 +328,13 @@ void schedule(){
 
 	runningThread->state = EXECUTION;
 
-	if (debug == 1)
-		printf("Leaving schedule for thread %d\n", runningThread->tid);
-
+	
 	setcontext(&runningThread->context);
 }
 
 void unblock(){
 	if (!CheckInit()) return;
 	
-	if (debug == 1)
-		printf("Unblock\n");
 	
 	TCB_t* blockedThread = NULL;
 	WaitQueue_t* waited = NULL;
@@ -381,30 +342,22 @@ void unblock(){
 	//IF THERE ARE THREADS TO BE WAITED FOR
 	if(waitTids){
 
-		//printf("TEM WAITEDS %d\n",runningThread->state);
-
 		//VERIFY IF THE FINISHED THREAD IS WAITED
 		//FOR ANOTHER THREAD
 		waited = GetWait(waitTids,runningThread->tid);
 		if(waited){
-			//printf("maoe");
-			//printf("ACHOU WAITED %d\n", waited->tid);
 
 			//FIND THE CORRESPONDING BLOCKED THREAD,
 			//REMOVES IT FROM THE BLOCKED THREADS LIST
 			//AND ADDS IT TO THE ABLE THREADS LIST
 			blockedThread = GetThread(blockedThreads, waited->waiting);
-			//printf("ACHOU BLOCKED %d\n", blockedThread->tid);
 
 			blockedThread->state = ABLE;
-			//printf("ACHOU able\n");
 
 			blockedThreads = RemoveThread(blockedThreads, blockedThread->tid);
 			waitTids = RemoveWait(waitTids,runningThread->tid);
 
-			//printf("ACHOU removewait\n");
 			activeThreads = AddThread(activeThreads, blockedThread);
-			//printf("ACHOU addthread\n");
 		}
 	}
 }
